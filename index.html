@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset=utf-8 />
+    <title>Lab 09 Template</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+    <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+    <link href='http://fonts.googleapis.com/css?family=Lato' rel='stylesheet' type='text/css'>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: whitesmoke;
+            font-family: Lato, sans-serif;
+            color: #0D0000;
+        }
+        header {
+            padding: 6px 10%;
+        }
+        h1 {
+            display: inline-block;
+            margin-right: 20px;
+            color: #001323;
+        }
+        h2 {
+            display: inline-block;
+            color: #A9A9A9;
+        }
+        #map {
+            width: 80%;
+            height: 540px;
+            margin: 10px auto;
+        }
+        footer {
+            padding: 6px 10%;
+            width: 80%;
+        }
+        p {
+            font-size: 1em;
+            color: #001323;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Coal, Natural Gas, and Nuclear Power Plant Output in the United States<br></h1>
+        <h2>(In Megawatts)</h2>
+    </header>
+
+    <div id='map'></div>
+
+    <footer>
+        <p>Map authored by Bradley Gardener</p>
+        <p>Please use the menu in the top righthand corner of the map to switch on and off layers.</p>
+        <p>To find the name of the power plant, it's primary fuel source, and it's output in Megawatts please zoom in. Upon zooming you will only see plants that are within 5000 km of your click.</p>
+    </footer>
+
+    <script src="power-plants.js"></script>
+    <script>
+
+       var map = L.map('map', {
+          center: [36,-94],
+          zoom: 4,
+      });
+      
+      var tiles = L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
+          subdomains: 'abcd',
+          maxZoom: 19
+      });  
+      
+      tiles.addTo(map);
+
+var commonStyles = {
+        weight: 1,
+        stroke: 1,
+        fillOpacity: .8
+}
+
+var layerInfo = {
+    coalLayer: {source:"Coal", color:'#DEB887'}, 
+    ngLayer: {source:"Natural Gas", color:'#0000FF'},
+    nuclearLayer: {source:"Nuclear", color: '#F0E68C'}
+};
+
+var geoJsonLayers = {};
+
+for(var layer in layerInfo) {     
+    geoJsonLayers[layer] = L.geoJson(plants, {
+        pointToLayer: function(feature,latlng) {
+            return L.circleMarker(latlng, commonStyles);
+        },
+        filter: function(feature) {
+            if(feature.properties.fuel_source[layerInfo[layer].source]) {
+                return feature;
+            }
+        },
+        style: function(feature) {
+            return {
+                color: layerInfo[layer].color,
+                fillColor: layerInfo[layer].color,
+                radius: getRadius(feature.properties.fuel_source[layerInfo[layer].source])
+            }
+        }        
+}).addTo(map);
+    }
+        
+function getRadius(val) {
+    var radius = Math.sqrt(val/Math.PI);
+    return radius * .8;   
+}
+
+var sourcesLabels = {
+    
+   "<b style='color:#DEB887; text-shadow: 0px 0px 1px #333;'>Coal</b>": geoJsonLayers.coalLayer,
+    "<b style='color:#0000FF; text-shadow: 0px 0px 1px #333;'>Natural Gas</b>": geoJsonLayers.ngLayer,
+    "<b style='color:##F0E68C; text-shadow: 0px 0px 1px #333;'>Nuclear</b>":geoJsonLayers.nuclearLayer
+};
+        
+L.control.layers(null, sourcesLabels, { collapsed:false }).addTo(map);
+
+map.on('click', function(e){
+          for(var i in layerInfo){
+          geoJsonLayers[i].eachLayer(function(layer){
+              var distance = e.latlng.distanceTo(layer.getLatLng())/1000;
+              
+              if(distance > 500){
+                  layer.setStyle({
+                      stroke: false,
+                      fill: false
+                  });
+              }else{
+                  layer.setStyle({
+                      stroke: true,
+                      fill: true,
+                  });
+        
+                  var content = "<b>" + layer.feature.properties.plant_name + "</b><br>";
+                                  
+                  content += "<b>" + layerInfo[i].source +"</b>: " +
+                      
+                 layer.feature.properties.fuel_source[layerInfo[i].source].toLocaleString() + " MW <br>";
+                  
+                  content += "I am <i>" +distance.toLocaleString()+
+                                 " km</i><br> from the click point."
+                  layer.bindPopup(content);
+              }
+          });
+          }
+      })
+
+/*map.on('click', function(e) {
+         geoJsonLayers[layer](function(layer) {
+    var distance = e.latlng.distanceTo(layer.getLatLng())/1000;
+        if(distance > 500) {
+            layer.setStyle({
+                stroke: false,
+                fill: false
+            });  
+        } else {
+            layer.setStyle({
+                stroke: true,
+                fill: true  
+            }); 
+        } 
+    });
+    */
+         
+
+                  
+    </script>
+    
+</body>
+
+</html>
